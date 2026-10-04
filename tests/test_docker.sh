@@ -44,9 +44,6 @@ docker compose -f docker-compose.local.yml run --rm django mypy my_awesome_proje
 docker compose -f docker-compose.local.yml run --rm django pytest
 
 if [ -d compose/production/neo4j ]; then
-  # create the Neo4j constraints and indexes declared on node classes
-  docker compose -f docker-compose.local.yml run --rm django python manage.py install_labels
-
   # back up and restore the Neo4j database (Community edition needs it stopped)
   docker compose -f docker-compose.local.yml stop neo4j
   docker compose -f docker-compose.local.yml run --rm neo4j backup

@@ -4,10 +4,10 @@ Neo4j
 =====
 
 When ``use_neo4j`` is ``y``, the generated project includes Neo4j_ (Community edition)
-alongside PostgreSQL, with neomodel_ on the Django side.
+alongside PostgreSQL, with the official `Neo4j Python driver`_ on the Django side.
 
 .. _Neo4j: https://neo4j.com/docs/
-.. _neomodel: https://neomodel.readthedocs.io/
+.. _Neo4j Python driver: https://neo4j.com/docs/python-manual/current/
 
 
 What you get
@@ -21,9 +21,9 @@ What you get
   its Neo4j version, so upgrading Neo4j never leaves you with a mismatched plugin.
 * ``.envs/.local/.neo4j`` and ``.envs/.production/.neo4j``, holding ``NEO4J_AUTH`` (with a
   generated password), the plugin list, memory settings and APOC file import/export settings.
-* A ``graph`` Django app that points neomodel at Neo4j on startup, and an ``install_labels``
-  management command that creates the constraints and indexes declared on your node classes.
-* A ``neo4j_db`` pytest fixture that runs a test inside a transaction and rolls it back.
+* A ``graph`` Django app whose ``driver.py`` keeps one driver per process, with
+  ``get_driver()``, ``get_session()`` and ``execute_query()`` helpers.
+* A ``neo4j_tx`` pytest fixture: a transaction that is rolled back after the test.
 * ``backup``, ``backups``, ``restore`` and ``rmbackup`` maintenance scripts in the Neo4j image,
   mirroring the PostgreSQL ones.
 
@@ -35,10 +35,10 @@ The ``.neo4j`` env files are read by both the ``neo4j`` container and Django:
 
 ``NEO4J_AUTH``
     ``neo4j/<password>``. The official image uses it to set the password when the database
-    is first created; Django uses it to build its connection URL. Changing it later does not
-    change the password of an existing database: run
+    is first created; Django uses it to authenticate. Changing it later does not change the
+    password of an existing database: run
     ``ALTER CURRENT USER SET PASSWORD FROM '<old>' TO '<new>'`` in Neo4j Browser first.
-    Stick to letters and digits, because the password also goes inside a ``bolt://`` URL.
+    The password can't contain a ``/``.
 
 Any other ``NEO4J_*`` variable
     Becomes a Neo4j setting (``NEO4J_server_memory_heap_max__size`` is
@@ -48,45 +48,72 @@ Any other ``NEO4J_*`` variable
 ``NEO4J_PLUGINS``
     A JSON list. Add ``"graph-data-science"`` for GDS, for example.
 
-To use a server outside the Compose stack, such as Neo4j Aura, set ``NEOMODEL_DATABASE_URL``
-(for example ``neo4j+s://neo4j:<password>@<id>.databases.neo4j.io``) in the ``.django``
-env file. The Django entrypoint then stops waiting for the bundled service, which you can remove.
+Django also reads two variables of its own, prefixed ``DJANGO_`` so the Neo4j image doesn't
+mistake them for settings:
+
+``DJANGO_NEO4J_URI``
+    Defaults to ``bolt://neo4j:7687``, the bundled service. To use another server, such as
+    Neo4j Aura, set it in the ``.django`` env file (``neo4j+s://<id>.databases.neo4j.io``) along
+    with that server's ``NEO4J_AUTH``. The Django entrypoint then stops waiting for the bundled
+    service, which you can remove.
+
+``DJANGO_NEO4J_DATABASE``
+    Defaults to ``neo4j``, the only database in Community edition.
 
 
-Working with nodes
-------------------
+Working with the graph
+----------------------
 
-Define nodes in an app's ``models.py``, or import them there, so Django loads them::
+``<project_slug>/graph/driver.py`` creates the driver on first use in each process, so
+Gunicorn workers and Celery processes each get their own connection pool, and commands that
+don't touch the graph don't need Neo4j to be running. For a single query::
 
-    from neomodel import StringProperty
-    from neomodel import StructuredNode
-    from neomodel import UniqueIdProperty
+    from my_project.graph.driver import execute_query
+
+    records, summary, keys = execute_query(
+        "MERGE (c:Company {name: $name}) RETURN c",
+        name="Acme",
+    )
+
+``execute_query`` runs on ``DJANGO_NEO4J_DATABASE`` and retries transient errors. For several
+queries in one transaction, write a function that takes the transaction and run it through a
+session::
+
+    from my_project.graph.driver import get_session
 
 
-    class Company(StructuredNode):
-        uid = UniqueIdProperty()
-        name = StringProperty(unique_index=True, required=True)
+    def rename_company(tx, old, new):
+        tx.run("MATCH (c:Company {name: $old}) SET c.name = $new", old=old, new=new)
 
-Then create the constraints and indexes, the way you would run migrations::
 
-    $ docker compose -f docker-compose.local.yml run --rm django python manage.py install_labels
+    with get_session() as session:
+        session.execute_write(rename_company, "Acme", "Acme Corp")
 
-neomodel connects lazily, once per process, on the first query. Management commands that
-don't touch the graph don't need Neo4j to be running.
+Keep constraints and indexes as Cypher with ``IF NOT EXISTS``, for example
+``CREATE CONSTRAINT company_name IF NOT EXISTS FOR (c:Company) REQUIRE c.name IS UNIQUE``,
+so they can run on every deploy.
+
+Prefer an object mapper? Add neomodel_ to your requirements and point it at the same
+``NEO4J_URI`` and ``NEO4J_AUTH`` settings.
+
+.. _neomodel: https://neomodel.readthedocs.io/
 
 
 Testing
 -------
 
-Neo4j Community has a single database, which tests share with local development. Use the
-``neo4j_db`` fixture so the test runs in a transaction that is rolled back afterwards::
+Neo4j Community has a single database, which tests share with local development. The
+``neo4j_tx`` fixture is a transaction that is rolled back after the test, so pass it to
+functions written like ``rename_company`` above::
 
-    def test_company_name(neo4j_db):
-        Company(name="Acme").save()
-        assert Company.nodes.get(name="Acme").name == "Acme"
+    def test_rename_company(neo4j_tx):
+        neo4j_tx.run("CREATE (:Company {name: 'Acme'})")
+        rename_company(neo4j_tx, "Acme", "Acme Corp")
+        result = neo4j_tx.run("MATCH (c:Company {name: 'Acme Corp'}) RETURN count(c) AS n")
+        assert result.single(strict=True)["n"] == 1
 
-Code that opens its own neomodel transaction (``with db.transaction:``) can't run inside the
-fixture, since neomodel doesn't nest transactions; clean up after such tests instead.
+Code that runs its own queries through ``execute_query`` or a new session commits them, so
+clean up after such tests yourself.
 
 
 Backups

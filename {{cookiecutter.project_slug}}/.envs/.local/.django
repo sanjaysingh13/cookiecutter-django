@@ -20,5 +20,5 @@ CELERY_FLOWER_PASSWORD=!!!SET CELERY_FLOWER_PASSWORD!!!
 # Neo4j
 # ------------------------------------------------------------------------------
 # Django reaches the neo4j service with NEO4J_AUTH from .envs/.local/.neo4j.
-# For a different server, set NEOMODEL_DATABASE_URL=bolt://neo4j:<password>@<host>:7687
+# For a different server, such as Neo4j Aura, set DJANGO_NEO4J_URI (and NEO4J_AUTH).
 {%- endif %}

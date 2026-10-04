@@ -73,12 +73,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # NEO4J_AUTH ("neo4j/<password>") is the same variable the Neo4j Docker image uses
 # to set its password, so one value configures both sides.
 NEO4J_USERNAME, _, NEO4J_PASSWORD = env("NEO4J_AUTH", default="neo4j/").partition("/")
-# https://neomodel.readthedocs.io/en/latest/configuration.html
-# Set NEOMODEL_DATABASE_URL to use a server other than the bundled one.
-NEOMODEL_DATABASE_URL = env(
-    "NEOMODEL_DATABASE_URL",
-    default=f"bolt://{NEO4J_USERNAME}:{NEO4J_PASSWORD}@{% if cookiecutter.use_docker == 'y' %}neo4j{% else %}localhost{% endif %}:7687",
-)
+# The Neo4j image turns every NEO4J_* variable it sees into a setting, so the
+# Django-only ones below use the DJANGO_ prefix instead.
+# https://neo4j.com/docs/python-manual/current/connect/
+NEO4J_URI = env("DJANGO_NEO4J_URI", default="bolt://{% if cookiecutter.use_docker == 'y' %}neo4j{% else %}localhost{% endif %}:7687")
+NEO4J_DATABASE = env("DJANGO_NEO4J_DATABASE", default="neo4j")
 {%- endif %}
 
 # URLS

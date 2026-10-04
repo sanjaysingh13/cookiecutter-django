@@ -13,7 +13,7 @@ Powered by [Cookiecutter](https://github.com/cookiecutter/cookiecutter), Cookiec
 production-ready Django projects quickly.
 
 > **This fork adds Neo4j.** Answer `use_neo4j` with `y` (the default) to get a Neo4j service with APOC,
-> [neomodel](https://neomodel.readthedocs.io/) wiring, backup scripts and a test fixture. See
+> the official [Python driver](https://neo4j.com/docs/python-manual/current/), backup scripts and a test fixture. See
 > [docs/4-guides/neo4j.rst](docs/4-guides/neo4j.rst).
 
 - Documentation: <https://cookiecutter-django.readthedocs.io/en/latest/>
@@ -51,7 +51,7 @@ _These features can be enabled during initial project setup._
 - Configuration for [Celery](https://docs.celeryq.dev) and [Flower](https://github.com/mher/flower) (the latter in Docker setup only)
 - Integration with [Mailpit](https://github.com/axllent/mailpit/) or [Mailtrap Local](https://github.com/mailtrap/mailtrap-local) for local email testing
 - Integration with [Sentry](https://sentry.io/welcome/) for error logging
-- [Neo4j](https://neo4j.com/) with APOC and [neomodel](https://neomodel.readthedocs.io/) (this fork)
+- [Neo4j](https://neo4j.com/) with APOC and the official Python driver (this fork)
 
 ## Constraints
 

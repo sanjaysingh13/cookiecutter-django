@@ -507,7 +507,7 @@ def test_neo4j_files(cookies, context, use_neo4j):
         assert ("neo4j" in services["django"]["depends_on"]) is expected
 
     base_settings = (project / "config" / "settings" / "base.py").read_text()
-    assert ("NEOMODEL_DATABASE_URL" in base_settings) is expected
+    assert ("NEO4J_URI" in base_settings) is expected
 
 
 NEO4J_PASSWORD_LENGTH = 64

@@ -40,7 +40,8 @@ The following table lists settings and their defaults for third-party applicatio
 Environment Variable                    Django Setting              Development Default                            Production Default
 ======================================= =========================== ============================================== ======================================================================
 NEO4J_AUTH                              NEO4J_USERNAME/_PASSWORD    set in .envs/.local/.neo4j                     set in .envs/.production/.neo4j
-NEOMODEL_DATABASE_URL                   NEOMODEL_DATABASE_URL       built from NEO4J_AUTH, host neo4j              built from NEO4J_AUTH, host neo4j
+DJANGO_NEO4J_URI                        NEO4J_URI                   bolt://neo4j:7687                              bolt://neo4j:7687
+DJANGO_NEO4J_DATABASE                   NEO4J_DATABASE              neo4j                                          neo4j
 DJANGO_AWS_ACCESS_KEY_ID                AWS_ACCESS_KEY_ID           n/a                                            raises error
 DJANGO_AWS_SECRET_ACCESS_KEY            AWS_SECRET_ACCESS_KEY       n/a                                            raises error
 DJANGO_AWS_STORAGE_BUCKET_NAME          AWS_STORAGE_BUCKET_NAME     n/a                                            raises error

@@ -73,10 +73,10 @@ postgresql_version:
     5. 14
 
 use_neo4j:
-    Indicates whether the project should include Neo4j_, with neomodel_ for the
-    Django side. Adds a ``neo4j`` Docker service with the APOC plugin, backup and
-    restore scripts, a ``graph`` app with an ``install_labels`` command, and a
-    ``neo4j_db`` test fixture. See :ref:`neo4j`.
+    Indicates whether the project should include Neo4j_, with the official Python
+    driver on the Django side. Adds a ``neo4j`` Docker service with the APOC plugin,
+    backup and restore scripts, a ``graph`` app that manages the driver, and a
+    ``neo4j_tx`` test fixture. See :ref:`neo4j`.
 
 neo4j_version:
     Select a Neo4j_ version (Community edition image) to use. The choices are:
@@ -179,7 +179,6 @@ debug:
 .. _PostgreSQL: https://www.postgresql.org/docs/
 
 .. _Neo4j: https://neo4j.com/docs/
-.. _neomodel: https://neomodel.readthedocs.io/
 
 .. _Gulp: https://github.com/gulpjs/gulp
 .. _Webpack: https://webpack.js.org

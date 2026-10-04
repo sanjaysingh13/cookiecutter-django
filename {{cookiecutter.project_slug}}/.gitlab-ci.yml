@@ -13,7 +13,7 @@ variables:
   {%- endif %}
   {%- if cookiecutter.use_neo4j == 'y' and cookiecutter.use_docker == 'n' %}
   NEO4J_AUTH: 'neo4j/debugpassword'
-  NEOMODEL_DATABASE_URL: 'bolt://neo4j:debugpassword@neo4j:7687'
+  DJANGO_NEO4J_URI: 'bolt://neo4j:7687'
   {%- endif %}
 
 precommit:

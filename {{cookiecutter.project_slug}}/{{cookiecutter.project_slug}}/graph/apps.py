@@ -1,10 +1,9 @@
 import atexit
 
 from django.apps import AppConfig
-from django.conf import settings
 from django.utils.translation import gettext_lazy as _
-from neomodel import db
-from neomodel import get_config
+
+from {{ cookiecutter.project_slug }}.graph.driver import close_driver
 
 
 class GraphConfig(AppConfig):
@@ -13,10 +12,6 @@ class GraphConfig(AppConfig):
 
     def ready(self):
         """
-        Point neomodel at Neo4j.
-
-        Nothing connects here: neomodel opens its driver on the first query in each
-        process, so commands that never touch the graph don't need Neo4j running.
+        Close this process's Neo4j driver when the process exits.
         """
-        get_config().update(database_url=settings.NEOMODEL_DATABASE_URL)
-        atexit.register(db.close_connection)
+        atexit.register(close_driver)

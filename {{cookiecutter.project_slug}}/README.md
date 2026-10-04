@@ -82,40 +82,48 @@ uv run celery -A config.celery_app worker -B -l info
 
 ### Neo4j
 
-This app comes with [Neo4j](https://neo4j.com/) {{ cookiecutter.neo4j_version }} (Community edition, with the APOC plugin) and [neomodel](https://neomodel.readthedocs.io/) for working with it from Django.
+This app comes with [Neo4j](https://neo4j.com/) {{ cookiecutter.neo4j_version }} (Community edition, with the APOC plugin) and the official [Neo4j Python driver](https://neo4j.com/docs/python-manual/current/).
 
 {%- if cookiecutter.use_docker == "y" %}
 
 The `neo4j` service starts with the rest of the stack. Neo4j Browser is at <http://localhost:7474>: log in as `neo4j` with the password from `NEO4J_AUTH` in `.envs/.local/.neo4j`.
 {%- else %}
 
-Run Neo4j {{ cookiecutter.neo4j_version }} locally and set `NEO4J_AUTH=neo4j/<password>` in your environment. Django connects to `bolt://localhost:7687`; set `NEOMODEL_DATABASE_URL` to use another server.
+Run Neo4j {{ cookiecutter.neo4j_version }} locally and set `NEO4J_AUTH=neo4j/<password>` in your environment. Django connects to `bolt://localhost:7687`; set `DJANGO_NEO4J_URI` to use another server.
 {%- endif %}
 
-Define nodes in an app's `models.py` (or import them there), for example:
+`{{ cookiecutter.project_slug }}/graph/driver.py` keeps one driver per process, created on first use. For a single query:
 
 ```python
-from neomodel import StringProperty
-from neomodel import StructuredNode
-from neomodel import UniqueIdProperty
+from {{ cookiecutter.project_slug }}.graph.driver import execute_query
 
-
-class Company(StructuredNode):
-    uid = UniqueIdProperty()
-    name = StringProperty(unique_index=True, required=True)
+records, summary, keys = execute_query(
+    "MERGE (c:Company {name: $name}) RETURN c",
+    name="Acme",
+)
 ```
 
-Then create the constraints and indexes they declare, much like running migrations:
+For several queries in one transaction, write a function that takes the transaction and run it with `get_session()`:
 
-{%- if cookiecutter.use_docker == "y" %}
+```python
+from {{ cookiecutter.project_slug }}.graph.driver import get_session
 
-    docker compose -f docker-compose.local.yml run --rm django python manage.py install_labels
-{%- else %}
 
-    uv run python manage.py install_labels
-{%- endif %}
+def add_supplier(tx, company, supplier):
+    tx.run("MERGE (c:Company {name: $name})", name=company)
+    tx.run(
+        "MATCH (c:Company {name: $company}) MERGE (s:Company {name: $supplier})-[:SUPPLIES]->(c)",
+        company=company,
+        supplier=supplier,
+    )
 
-In tests, use the `neo4j_db` fixture: the test runs in a Neo4j transaction that is rolled back afterwards, so nothing is left in your local database.
+
+with get_session() as session:
+    session.execute_write(add_supplier, "Acme", "Globex")
+```
+
+In tests, pass the `neo4j_tx` fixture to such functions: it is a transaction that is rolled back afterwards, so nothing is left in your local database.
+
 {%- if cookiecutter.use_docker == "y" %}
 
 #### Neo4j backups

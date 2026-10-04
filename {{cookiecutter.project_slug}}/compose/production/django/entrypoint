@@ -15,7 +15,7 @@ wait-for-it "${POSTGRES_HOST}:${POSTGRES_PORT}" -t 30
 {% if cookiecutter.use_neo4j == 'y' %}
 # Wait for the bundled neo4j service, unless Django is pointed at another server.
 # The first start takes longer: Neo4j sets the password and installs plugins.
-if [ -z "${NEOMODEL_DATABASE_URL:-}" ]; then
+if [ -z "${DJANGO_NEO4J_URI:-}" ]; then
     wait-for-it "neo4j:7687" -t 120
 
     >&2 echo 'Neo4j is available'
