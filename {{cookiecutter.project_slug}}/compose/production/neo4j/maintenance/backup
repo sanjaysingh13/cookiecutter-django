@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+
+### Create a database backup.
+###
+### Neo4j Community edition can't dump a running database,
+### so stop the neo4j service while the backup runs.
+###
+### Parameters:
+###     <1> name of the database to back up (default: neo4j).
+###
+### Usage:
+###     $ docker compose -f <environment>.yml stop neo4j
+###     $ docker compose -f <environment>.yml run --rm neo4j backup
+###     $ docker compose -f <environment>.yml start neo4j
+
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+
+working_dir="$(dirname ${0})"
+source "${working_dir}/_sourced/constants.sh"
+source "${working_dir}/_sourced/messages.sh"
+
+
+database="${1:-neo4j}"
+
+message_welcome "Backing up the '${database}' database..."
+
+if [[ ! -w "${BACKUP_DIR_PATH}" ]]; then
+    message_error "'${BACKUP_DIR_PATH}' isn't writable by the neo4j user. Fix it with 'docker compose -f <environment>.yml run --rm --entrypoint chown neo4j neo4j:neo4j ${BACKUP_DIR_PATH}' and try again."
+    exit 1
+fi
+
+backup_filename="${BACKUP_FILE_PREFIX}_${database}_$(date +'%Y_%m_%dT%H_%M_%S').dump"
+backup_path="${BACKUP_DIR_PATH}/${backup_filename}"
+
+if ! neo4j-admin database dump "${database}" --to-stdout > "${backup_path}"; then
+    rm -f "${backup_path}"
+    message_error "The dump failed. If Neo4j is still running, stop it first ('docker compose -f <environment>.yml stop neo4j') and try again."
+    exit 1
+fi
+
+message_success "'${database}' database backup '${backup_filename}' has been created and placed in '${BACKUP_DIR_PATH}'."

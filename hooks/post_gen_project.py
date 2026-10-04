@@ -23,6 +23,8 @@ HINT = "\x1b[3;33m"
 SUCCESS = "\x1b[1;32m [SUCCESS]: "
 
 DEBUG_VALUE = "debug"
+# Neo4j rejects passwords shorter than 8 characters, so "debug" alone won't do.
+NEO4J_DEBUG_PASSWORD = "debugpassword"  # noqa: S105
 
 
 def remove_open_source_files():
@@ -383,6 +385,41 @@ def set_flags_in_envs(postgres_user, celery_flower_user, debug=False):  # noqa: 
     set_celery_flower_password(production_django_envs_path, value=DEBUG_VALUE if debug else None)
 
 
+def set_neo4j_password(file_path, value=None):
+    # Letters and digits only: the password also ends up inside a bolt:// URL.
+    return set_flag(
+        file_path,
+        "!!!SET NEO4J_PASSWORD!!!",
+        value=value,
+        length=64,
+        using_digits=True,
+        using_ascii_letters=True,
+    )
+
+
+def set_neo4j_flags_in_envs(debug=False):  # noqa: FBT002
+    value = NEO4J_DEBUG_PASSWORD if debug else None
+    set_neo4j_password(Path(".envs", ".local", ".neo4j"), value=value)
+    set_neo4j_password(Path(".envs", ".production", ".neo4j"), value=value)
+
+
+def remove_neo4j_files():
+    file_paths = [
+        Path(".envs", ".local", ".neo4j"),
+        Path(".envs", ".production", ".neo4j"),
+    ]
+    for file_path in file_paths:
+        if file_path.exists():
+            file_path.unlink()
+    dir_paths = [
+        Path("compose", "production", "neo4j"),
+        Path("{{ cookiecutter.project_slug }}", "graph"),
+    ]
+    for dir_path in dir_paths:
+        if dir_path.exists():
+            shutil.rmtree(dir_path)
+
+
 def set_flags_in_settings_files():
     set_django_secret_key(Path("config", "settings", "local.py"))
     set_django_secret_key(Path("config", "settings", "test.py"))
@@ -433,6 +470,11 @@ def main():  # noqa: C901, PLR0912, PLR0915
         debug=debug,
     )
     set_flags_in_settings_files()
+
+    if "{{ cookiecutter.use_neo4j }}".lower() == "y":
+        set_neo4j_flags_in_envs(debug=debug)
+    else:
+        remove_neo4j_files()
 
     if "{{ cookiecutter.open_source_license }}" == "Not open source":
         remove_open_source_files()

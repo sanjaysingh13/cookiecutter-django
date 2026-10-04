@@ -4,7 +4,10 @@
 ###
 ### Usage:
 ###     $ docker compose -f docker-compose.production.yml run --rm awscli <1>
-
+{% if cookiecutter.use_neo4j == 'y' -%}
+###
+### Neo4j backups live under neo4j/, e.g. download neo4j/<backup filename>
+{% endif %}
 set -o errexit
 set -o pipefail
 set -o nounset

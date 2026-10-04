@@ -6,6 +6,9 @@ python:
 
 services:
   - {% if cookiecutter.use_docker == 'y' %}docker{% else %}postgresql{% endif %}
+  {%- if cookiecutter.use_neo4j == 'y' and cookiecutter.use_docker == 'n' %}
+  - docker
+  {%- endif %}
 jobs:
   include:
     - name: "Linter"
@@ -29,7 +32,14 @@ jobs:
       after_failure:
         - docker compose -f docker-compose.local.yml logs
     {%- else %}
+      {%- if cookiecutter.use_neo4j == 'y' %}
+      env:
+        - NEO4J_AUTH=neo4j/debugpassword
+      {%- endif %}
       before_install:
+        {%- if cookiecutter.use_neo4j == 'y' %}
+        - docker run -d -p 7687:7687 -e NEO4J_AUTH=neo4j/debugpassword neo4j:{{ cookiecutter.neo4j_version }}-community
+        {%- endif %}
         - sudo apt-get update -qq
         - sudo apt-get install -qq build-essential gettext python-dev zlib1g-dev libpq-dev xvfb
         - sudo apt-get install -qq libjpeg8-dev libfreetype6-dev libwebp-dev

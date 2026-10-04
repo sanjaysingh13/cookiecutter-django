@@ -1,0 +1,19 @@
+# Neo4j
+# ------------------------------------------------------------------------------
+# Read by the neo4j container and by Django. Every other NEO4J_* variable here
+# becomes a Neo4j setting, so only add real settings to this file.
+
+# "neo4j/<password>". Neo4j applies it only when the database is first created.
+NEO4J_AUTH=neo4j/!!!SET NEO4J_PASSWORD!!!
+# Plugins the image ships with, enabled at startup (a JSON list)
+NEO4J_PLUGINS=["apoc"]
+
+# Memory
+NEO4J_server_memory_heap_initial__size=512m
+NEO4J_server_memory_heap_max__size=512m
+NEO4J_server_memory_pagecache_size=512m
+
+# APOC file export/import, limited to Neo4j's import directory
+NEO4J_apoc_export_file_enabled=true
+NEO4J_apoc_import_file_enabled=true
+NEO4J_apoc_import_file_use__neo4j__config=true

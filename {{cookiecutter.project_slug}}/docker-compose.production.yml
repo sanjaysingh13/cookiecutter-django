@@ -1,6 +1,10 @@
 volumes:
   production_postgres_data: {}
   production_postgres_data_backups: {}
+  {%- if cookiecutter.use_neo4j == 'y' %}
+  production_neo4j_data: {}
+  production_neo4j_data_backups: {}
+  {%- endif %}
   production_traefik: {}
   {%- if cookiecutter.cloud_provider == 'None' %}
   production_django_media: {}
@@ -35,10 +39,16 @@ services:
     {%- endif %}
     depends_on:
       - postgres
+      {%- if cookiecutter.use_neo4j == 'y' %}
+      - neo4j
+      {%- endif %}
       - redis
     env_file:
       - ./.envs/.production/.django
       - ./.envs/.production/.postgres
+      {%- if cookiecutter.use_neo4j == 'y' %}
+      - ./.envs/.production/.neo4j
+      {%- endif %}
     command: /start
 
   postgres:
@@ -55,6 +65,26 @@ services:
       - production_postgres_data_backups:/backups
     env_file:
       - ./.envs/.production/.postgres
+
+  {%- if cookiecutter.use_neo4j == 'y' %}
+
+  neo4j:
+    build:
+      context: .
+      dockerfile: ./compose/production/neo4j/Dockerfile
+    image: {{ cookiecutter.project_slug }}_production_neo4j
+    volumes:
+      - production_neo4j_data:/data
+      - production_neo4j_data_backups:/backups
+    env_file:
+      - ./.envs/.production/.neo4j
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+  {%- endif %}
 
   traefik:
     build:
@@ -107,6 +137,9 @@ services:
       - ./.envs/.production/.django
     volumes:
       - production_postgres_data_backups:/backups:z
+      {%- if cookiecutter.use_neo4j == 'y' %}
+      - production_neo4j_data_backups:/backups/neo4j:z
+      {%- endif %}
   {%- endif %}
   {%- if cookiecutter.cloud_provider == 'None' %}
 

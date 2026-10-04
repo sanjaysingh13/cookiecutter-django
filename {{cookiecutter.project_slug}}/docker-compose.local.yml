@@ -1,6 +1,10 @@
 volumes:
   {{ cookiecutter.project_slug }}_local_postgres_data: {}
   {{ cookiecutter.project_slug }}_local_postgres_data_backups: {}
+  {%- if cookiecutter.use_neo4j == 'y' %}
+  {{ cookiecutter.project_slug }}_local_neo4j_data: {}
+  {{ cookiecutter.project_slug }}_local_neo4j_data_backups: {}
+  {%- endif %}
   {% if cookiecutter.use_celery == 'y' %}{{ cookiecutter.project_slug }}_local_redis_data: {}{% endif %}
 
 services:
@@ -12,6 +16,9 @@ services:
     container_name: {{ cookiecutter.project_slug }}_local_django
     depends_on:
       - postgres
+      {%- if cookiecutter.use_neo4j == 'y' %}
+      - neo4j
+      {%- endif %}
       {%- if cookiecutter.use_celery == 'y' %}
       - redis
       {%- endif %}
@@ -29,6 +36,10 @@ services:
         required: false
       - path: ./.envs/.local/.postgres
         required: false
+      {%- if cookiecutter.use_neo4j == 'y' %}
+      - path: ./.envs/.local/.neo4j
+        required: false
+      {%- endif %}
     ports:
       - '8000:8000'
     command: /start
@@ -49,6 +60,33 @@ services:
     env_file:
       - path: ./.envs/.local/.postgres
         required: false
+
+  {%- if cookiecutter.use_neo4j == 'y' %}
+
+  neo4j:
+    build:
+      context: .
+      dockerfile: ./compose/production/neo4j/Dockerfile
+    image: {{ cookiecutter.project_slug }}_production_neo4j
+    container_name: {{ cookiecutter.project_slug }}_local_neo4j
+    volumes:
+      - {{ cookiecutter.project_slug }}_local_neo4j_data:/data
+      - {{ cookiecutter.project_slug }}_local_neo4j_data_backups:/backups
+    env_file:
+      - path: ./.envs/.local/.neo4j
+        required: false
+    ports:
+      # Neo4j Browser on http://localhost:7474, Bolt for the browser and other tools
+      - '7474:7474'
+      - '7687:7687'
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  {%- endif %}
 
   {%- if cookiecutter.mail_catcher == 'Mailpit' %}
 
@@ -85,6 +123,9 @@ services:
     depends_on:
       - redis
       - postgres
+      {%- if cookiecutter.use_neo4j == 'y' %}
+      - neo4j
+      {%- endif %}
       {%- if cookiecutter.mail_catcher == 'Mailpit' %}
       - mailpit
       {%- endif %}
@@ -101,6 +142,9 @@ services:
     depends_on:
       - redis
       - postgres
+      {%- if cookiecutter.use_neo4j == 'y' %}
+      - neo4j
+      {%- endif %}
       {%- if cookiecutter.mail_catcher == 'Mailpit' %}
       - mailpit
       {%- endif %}

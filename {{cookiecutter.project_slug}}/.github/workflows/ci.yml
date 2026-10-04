@@ -54,6 +54,20 @@ jobs:
           - 5432:5432
         env:
           POSTGRES_PASSWORD: postgres
+      {%- if cookiecutter.use_neo4j == 'y' %}
+      neo4j:
+        image: neo4j:{{ cookiecutter.neo4j_version }}-community
+        ports:
+          - 7687:7687
+        env:
+          NEO4J_AUTH: neo4j/debugpassword
+          NEO4J_PLUGINS: '["apoc"]'
+        options: >-
+          --health-cmd "wget --quiet --tries=1 --spider http://localhost:7474 || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+      {%- endif %}
 
     env:
       {%- if cookiecutter.use_celery == 'y' %}
@@ -63,6 +77,9 @@ jobs:
       POSTGRES_PASSWORD: 'postgres'
       POSTGRES_HOST: 'localhost'
       POSTGRES_DB: 'postgres'
+      {%- if cookiecutter.use_neo4j == 'y' %}
+      NEO4J_AUTH: 'neo4j/debugpassword'
+      {%- endif %}
 
     {%- endif %}
 
@@ -96,6 +113,14 @@ jobs:
           POSTGRES_PASSWORD=debug
           EOF
           fi
+          {%- if cookiecutter.use_neo4j == 'y' %}
+          if [ ! -f .envs/.local/.neo4j ]; then
+            cat <<'EOF' > .envs/.local/.neo4j
+          NEO4J_AUTH=neo4j/debugpassword
+          NEO4J_PLUGINS=["apoc"]
+          EOF
+          fi
+          {%- endif %}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

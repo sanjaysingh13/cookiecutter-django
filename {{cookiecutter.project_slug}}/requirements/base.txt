@@ -19,6 +19,9 @@ flower==2.2.0  # https://github.com/mher/flower
 uvicorn[standard]==0.54.0  # https://github.com/Kludex/uvicorn
 uvicorn-worker==0.4.0  # https://github.com/Kludex/uvicorn-worker
 {%- endif %}
+{%- if cookiecutter.use_neo4j == 'y' %}
+neomodel==7.0.0  # https://github.com/neo4j-contrib/neomodel
+{%- endif %}
 
 # Django
 # ------------------------------------------------------------------------------

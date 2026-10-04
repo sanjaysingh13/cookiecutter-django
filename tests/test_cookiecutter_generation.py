@@ -138,6 +138,17 @@ SUPPORTED_COMBINATIONS = [
     {"keep_local_envs_in_vcs": "n"},
     {"debug": "y"},
     {"debug": "n"},
+    {"use_neo4j": "y"},
+    {"use_neo4j": "n"},
+    {"use_neo4j": "y", "neo4j_version": "5.26"},
+    {"use_neo4j": "y", "use_docker": "y", "use_celery": "y", "cloud_provider": "AWS"},
+    {"use_neo4j": "n", "use_docker": "y", "use_celery": "y", "cloud_provider": "AWS"},
+    {"use_neo4j": "y", "use_docker": "n"},
+    {"use_neo4j": "y", "use_docker": "n", "ci_tool": "Github"},
+    {"use_neo4j": "y", "use_docker": "n", "ci_tool": "Gitlab"},
+    {"use_neo4j": "y", "use_docker": "n", "ci_tool": "Travis"},
+    {"use_neo4j": "y", "use_docker": "n", "ci_tool": "Drone"},
+    {"use_neo4j": "y", "use_docker": "n", "keep_local_envs_in_vcs": "n"},
 ]
 
 UNSUPPORTED_COMBINATIONS = [
@@ -470,3 +481,47 @@ def test_pre_commit_without_heroku(cookies, context):
     data = pre_commit_config.read_text()
 
     assert "uv-pre-commit" not in data
+
+
+@pytest.mark.parametrize("use_neo4j", ["y", "n"])
+def test_neo4j_files(cookies, context, use_neo4j):
+    """Neo4j files, services and settings are only present when use_neo4j is set."""
+    context.update({"use_neo4j": use_neo4j, "use_docker": "y", "cloud_provider": "AWS"})
+    result = cookies.bake(extra_context=context)
+    assert result.exit_code == 0
+    expected = use_neo4j == "y"
+    project = result.project_path
+
+    for path in [
+        project / ".envs" / ".local" / ".neo4j",
+        project / ".envs" / ".production" / ".neo4j",
+        project / "compose" / "production" / "neo4j" / "Dockerfile",
+        project / "compose" / "production" / "neo4j" / "maintenance" / "backup",
+        project / context["project_slug"] / "graph" / "apps.py",
+    ]:
+        assert path.exists() is expected, path
+
+    for compose_file in ["docker-compose.local.yml", "docker-compose.production.yml"]:
+        services = yaml.safe_load((project / compose_file).read_text())["services"]
+        assert ("neo4j" in services) is expected
+        assert ("neo4j" in services["django"]["depends_on"]) is expected
+
+    base_settings = (project / "config" / "settings" / "base.py").read_text()
+    assert ("NEOMODEL_DATABASE_URL" in base_settings) is expected
+
+
+NEO4J_PASSWORD_LENGTH = 64
+
+
+def test_neo4j_passwords_are_generated(cookies, context):
+    context.update({"use_neo4j": "y", "use_docker": "y"})
+    result = cookies.bake(extra_context=context)
+    assert result.exit_code == 0
+
+    for env in [".local", ".production"]:
+        content = (result.project_path / ".envs" / env / ".neo4j").read_text()
+        auth = next(line for line in content.splitlines() if line.startswith("NEO4J_AUTH="))
+        user, _, password = auth.removeprefix("NEO4J_AUTH=").partition("/")
+        assert user == "neo4j"
+        assert len(password) == NEO4J_PASSWORD_LENGTH
+        assert password.isalnum()

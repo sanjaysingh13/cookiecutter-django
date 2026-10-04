@@ -66,6 +66,20 @@ else:
 DATABASES["default"]["ATOMIC_REQUESTS"] = True
 # https://docs.djangoproject.com/en/stable/ref/settings/#std:setting-DEFAULT_AUTO_FIELD
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+{%- if cookiecutter.use_neo4j == 'y' %}
+
+# NEO4J
+# ------------------------------------------------------------------------------
+# NEO4J_AUTH ("neo4j/<password>") is the same variable the Neo4j Docker image uses
+# to set its password, so one value configures both sides.
+NEO4J_USERNAME, _, NEO4J_PASSWORD = env("NEO4J_AUTH", default="neo4j/").partition("/")
+# https://neomodel.readthedocs.io/en/latest/configuration.html
+# Set NEOMODEL_DATABASE_URL to use a server other than the bundled one.
+NEOMODEL_DATABASE_URL = env(
+    "NEOMODEL_DATABASE_URL",
+    default=f"bolt://{NEO4J_USERNAME}:{NEO4J_PASSWORD}@{% if cookiecutter.use_docker == 'y' %}neo4j{% else %}localhost{% endif %}:7687",
+)
+{%- endif %}
 
 # URLS
 # ------------------------------------------------------------------------------
@@ -112,6 +126,9 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     "{{ cookiecutter.project_slug }}.users",
+    {%- if cookiecutter.use_neo4j == 'y' %}
+    "{{ cookiecutter.project_slug }}.graph",
+    {%- endif %}
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps

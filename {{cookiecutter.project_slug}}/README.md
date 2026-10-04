@@ -78,6 +78,59 @@ uv run celery -A config.celery_app worker -B -l info
 ```
 
 {%- endif %}
+{%- if cookiecutter.use_neo4j == "y" %}
+
+### Neo4j
+
+This app comes with [Neo4j](https://neo4j.com/) {{ cookiecutter.neo4j_version }} (Community edition, with the APOC plugin) and [neomodel](https://neomodel.readthedocs.io/) for working with it from Django.
+
+{%- if cookiecutter.use_docker == "y" %}
+
+The `neo4j` service starts with the rest of the stack. Neo4j Browser is at <http://localhost:7474>: log in as `neo4j` with the password from `NEO4J_AUTH` in `.envs/.local/.neo4j`.
+{%- else %}
+
+Run Neo4j {{ cookiecutter.neo4j_version }} locally and set `NEO4J_AUTH=neo4j/<password>` in your environment. Django connects to `bolt://localhost:7687`; set `NEOMODEL_DATABASE_URL` to use another server.
+{%- endif %}
+
+Define nodes in an app's `models.py` (or import them there), for example:
+
+```python
+from neomodel import StringProperty
+from neomodel import StructuredNode
+from neomodel import UniqueIdProperty
+
+
+class Company(StructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True, required=True)
+```
+
+Then create the constraints and indexes they declare, much like running migrations:
+
+{%- if cookiecutter.use_docker == "y" %}
+
+    docker compose -f docker-compose.local.yml run --rm django python manage.py install_labels
+{%- else %}
+
+    uv run python manage.py install_labels
+{%- endif %}
+
+In tests, use the `neo4j_db` fixture: the test runs in a Neo4j transaction that is rolled back afterwards, so nothing is left in your local database.
+{%- if cookiecutter.use_docker == "y" %}
+
+#### Neo4j backups
+
+Neo4j Community edition can't dump a running database, so it is stopped while a backup runs. Locally, `just neo4j-backup` and `just neo4j-restore <file>` handle that. In production:
+
+    docker compose -f docker-compose.production.yml stop neo4j
+    docker compose -f docker-compose.production.yml run --rm neo4j backup
+    docker compose -f docker-compose.production.yml start neo4j
+
+`run --rm neo4j backups` lists the backups and `run --rm neo4j restore <file>` loads one, also with Neo4j stopped.
+{%- if cookiecutter.cloud_provider == "AWS" %} `docker compose -f docker-compose.production.yml run --rm awscli upload` copies them to S3 along with the PostgreSQL backups.{% endif %}
+{%- endif %}
+
+{%- endif %}
 {%- if cookiecutter.mail_catcher == "Mailpit" %}
 
 ### Email Server

@@ -11,6 +11,9 @@ PRODUCTION_DOTENVS_DIR = BASE_DIR / ".envs" / ".production"
 PRODUCTION_DOTENV_FILES = [
     PRODUCTION_DOTENVS_DIR / ".django",
     PRODUCTION_DOTENVS_DIR / ".postgres",
+    {%- if cookiecutter.use_neo4j == 'y' %}
+    PRODUCTION_DOTENVS_DIR / ".neo4j",
+    {%- endif %}
 ]
 DOTENV_FILE = BASE_DIR / ".env"
 

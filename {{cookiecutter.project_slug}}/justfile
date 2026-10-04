@@ -40,3 +40,21 @@ manage +args:
 # pytest: Run tests with pytest.
 pytest *args:
     @docker compose run --rm django pytest {{ "{{args}}" }}
+{%- if cookiecutter.use_neo4j == 'y' %}
+
+# neo4j-backup: Dump the Neo4j database to its backups volume (Neo4j is stopped meanwhile).
+neo4j-backup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    docker compose stop neo4j
+    trap 'docker compose start neo4j' EXIT
+    docker compose run --rm neo4j backup
+
+# neo4j-restore: Replace the Neo4j database with a backup (list them with `docker compose run --rm neo4j backups`).
+neo4j-restore name:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    docker compose stop neo4j
+    trap 'docker compose start neo4j' EXIT
+    docker compose run --rm neo4j restore {{ "{{name}}" }}
+{%- endif %}

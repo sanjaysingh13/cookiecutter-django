@@ -24,6 +24,11 @@ aws s3 cp ${BACKUP_DIR_PATH} s3://${AWS_STORAGE_BUCKET_NAME}${BACKUP_DIR_PATH} -
 
 message_info "Cleaning the directory ${BACKUP_DIR_PATH}"
 
+{% if cookiecutter.use_neo4j == 'y' -%}
+# /backups/neo4j is the Neo4j backups volume, mounted inside this one: delete
+# the files but keep the directories, since a mount point can't be removed.
+find ${BACKUP_DIR_PATH} -type f -delete
+{% else -%}
 rm -rf ${BACKUP_DIR_PATH}/*
-
+{% endif %}
 message_success "Finished uploading and cleaning."

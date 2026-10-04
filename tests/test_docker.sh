@@ -11,6 +11,7 @@ finish() {
   # Your cleanup code here
   docker compose -f docker-compose.local.yml down --remove-orphans
   docker volume rm my_awesome_project_my_awesome_project_local_postgres_data
+  docker volume rm my_awesome_project_my_awesome_project_local_neo4j_data my_awesome_project_my_awesome_project_local_neo4j_data_backups 2>/dev/null || true
 
 }
 # the cleanup doesn't work in the github actions
@@ -41,6 +42,18 @@ docker compose -f docker-compose.local.yml run --rm django mypy my_awesome_proje
 
 # run the project's tests
 docker compose -f docker-compose.local.yml run --rm django pytest
+
+if [ -d compose/production/neo4j ]; then
+  # create the Neo4j constraints and indexes declared on node classes
+  docker compose -f docker-compose.local.yml run --rm django python manage.py install_labels
+
+  # back up and restore the Neo4j database (Community edition needs it stopped)
+  docker compose -f docker-compose.local.yml stop neo4j
+  docker compose -f docker-compose.local.yml run --rm neo4j backup
+  backup_file=$(docker compose -f docker-compose.local.yml run --rm neo4j sh -c 'ls -t /backups | head -n 1' | tail -n 1)
+  docker compose -f docker-compose.local.yml run --rm neo4j restore "$backup_file"
+  docker compose -f docker-compose.local.yml start neo4j
+fi
 
 # return non-zero status code if there are migrations that have not been created
 docker compose -f docker-compose.local.yml run --rm django python manage.py makemigrations --check || { echo "ERROR: there were changes in the models, but migration listed above have not been created and are not saved in version control"; exit 1; }

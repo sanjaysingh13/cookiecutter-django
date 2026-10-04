@@ -19,6 +19,8 @@
   "editor": ["None", "PyCharm", "VS Code"],
   "use_docker": "n",
   "postgresql_version": ["18", "17", "16", "15", "14"],
+  "use_neo4j": "y",
+  "neo4j_version": ["2026.09", "5.26"],
   "cloud_provider": ["AWS", "GCP", "Azure", "None"],
   "mail_service": [
     "Mailgun",
